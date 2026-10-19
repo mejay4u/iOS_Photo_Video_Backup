@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Photo Backup</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>Photo Backup</h1>
+  <nav>
+    <button class="tab active" data-tab="backup">Backup &amp; Sort</button>
+    <button class="tab" data-tab="library">Library</button>
+    <button class="tab" data-tab="duplicates">Duplicates</button>
+    <button class="tab" data-tab="quality">Low Quality</button>
+  </nav>
+</header>
+
+<div id="job" class="job hidden">
+  <div class="job-row">
+    <span id="job-msg">Working…</span>
+    <button id="job-cancel" class="secondary small">Cancel</button>
+  </div>
+  <progress id="job-bar" max="1" value="0"></progress>
+</div>
+
+<main>
+  <!-- ======================= BACKUP ======================= -->
+  <section id="tab-backup" class="panel">
+    <div class="card">
+      <h2>1. Folders</h2>
+      <label>iPhone photos folder (source)
+        <div class="row"><input id="source" placeholder="e.g. D:\iPhone Import\DCIM"><button class="secondary" data-pick="source">Browse…</button></div>
+      </label>
+      <p class="hint">Copy the iPhone's <b>DCIM</b> folder to the PC first (File Explorer → Apple iPhone → Internal Storage), or use the folder that iCloud for Windows / the Windows Photos app imports into.</p>
+      <label>Backup library (destination)
+        <div class="row"><input id="library" placeholder="e.g. E:\Photos"><button class="secondary" data-pick="library">Browse…</button></div>
+      </label>
+    </div>
+
+    <div class="card">
+      <h2>2. Options</h2>
+      <label>Folder layout <select id="layout"></select></label>
+      <fieldset>
+        <legend>After backing up</legend>
+        <label class="inline"><input type="radio" name="mode" value="copy" checked> Copy — keep the originals (recommended)</label>
+        <label class="inline"><input type="radio" name="mode" value="move"> Move — remove each original after its copy is verified</label>
+      </fieldset>
+      <label class="inline"><input type="checkbox" id="separate_kinds"> Put photos and videos in separate “Photos” / “Videos” subfolders</label>
+      <label>When I delete files in this app
+        <select id="delete_mode">
+          <option value="recycle">Send them to the Windows Recycle Bin</option>
+          <option value="folder">Move them to the library's _PhotoBackup\Deleted folder</option>
+        </select>
+      </label>
+      <button id="save">Save settings</button> <span id="saved" class="ok hidden">Saved ✓</span>
+    </div>
+
+    <div class="card">
+      <h2>3. Run</h2>
+      <p class="hint">Preview first: nothing is copied until you press <b>Start backup</b>. Existing files are never overwritten — identical files are skipped, different files with the same name get “ (1)”.</p>
+      <button id="preview" class="secondary">Preview</button>
+      <button id="start">Start backup</button>
+      <div id="sort-result"></div>
+    </div>
+  </section>
+
+  <!-- ======================= LIBRARY ======================= -->
+  <section id="tab-library" class="panel hidden">
+    <div class="library">
+      <aside id="tree" class="tree"></aside>
+      <div class="content">
+        <div class="toolbar">
+          <span id="folder-title">Choose a folder</span>
+          <span class="spacer"></span>
+          <button class="secondary small" id="lib-all">Select all</button>
+          <button class="secondary small" id="lib-none">Clear</button>
+          <button class="danger small" id="lib-delete">Delete selected</button>
+        </div>
+        <div id="lib-grid" class="grid" data-sel="lib"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= DUPLICATES ======================= -->
+  <section id="tab-duplicates" class="panel hidden">
+    <div class="toolbar card">
+      <button class="scan">Scan library</button>
+      <label class="inline"><input type="checkbox" id="dup-similar" checked> Include similar photos</label>
+      <label class="inline">Similarity <input type="range" id="dup-threshold" min="0" max="12" value="5"> <span id="dup-threshold-v">5</span></label>
+      <span class="spacer"></span>
+      <span id="dup-summary"></span>
+      <button class="danger" id="dup-delete">Delete selected</button>
+    </div>
+    <p class="hint">“Exact” = byte-for-byte identical. “Similar” = looks alike (bursts, re-saves, edits) — review carefully. The suggested copy to keep is marked <b>KEEP</b>; the others are pre-selected. Click a photo to view it.</p>
+    <div id="dup-groups" data-sel="dup"></div>
+  </section>
+
+  <!-- ======================= LOW QUALITY ======================= -->
+  <section id="tab-quality" class="panel hidden">
+    <div class="toolbar card">
+      <button class="scan">Scan library</button>
+      <label class="inline">Blur below <input type="number" id="q-blur" step="5" min="0"></label>
+      <label class="inline">Darker than <input type="number" id="q-dark" step="5" min="0" max="255"></label>
+      <label class="inline">Brighter than <input type="number" id="q-bright" step="5" min="0" max="255"></label>
+      <label class="inline">Smaller than (MP) <input type="number" id="q-minmp" step="0.1" min="0"></label>
+      <button class="secondary" id="q-apply">Apply</button>
+      <span class="spacer"></span>
+      <button class="secondary small" id="q-all">Select all</button>
+      <button class="secondary small" id="q-none">Clear</button>
+      <button class="danger" id="q-delete">Delete selected</button>
+    </div>
+    <p class="hint">Worst (blurriest) first. Nothing is selected automatically — tick the ones you want to delete. Sharpness score: lower = blurrier.</p>
+    <div id="q-grid" class="grid" data-sel="q"></div>
+  </section>
+</main>
+
+<div id="viewer" class="viewer hidden">
+  <div class="viewer-bar">
+    <span id="viewer-name"></span>
+    <span class="spacer"></span>
+    <button class="secondary small" id="viewer-open">Open in Windows</button>
+    <button class="secondary small" id="viewer-reveal">Show in folder</button>
+    <button class="secondary small" id="viewer-close">Close ✕</button>
+  </div>
+  <div id="viewer-body" class="viewer-body"></div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
